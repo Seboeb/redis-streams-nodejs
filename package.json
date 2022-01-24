@@ -1,0 +1,25 @@
+{
+  "name": "redis-streams-nodejs",
+  "version": "1.0.0",
+  "description": "Redis streams for NodeJs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Secrid/redis-streams-nodejs.git"
+  },
+  "author": "Sebastiaan Hekner",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Secrid/redis-streams-nodejs/issues"
+  },
+  "homepage": "https://github.com/Secrid/redis-streams-nodejs#readme",
+  "dependencies": {
+    "redis": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.8"
+  }
+}
