@@ -5,6 +5,7 @@ class RedisConsumer {
     constructor(client) {
         this.BLOCK = 0;
         this.COUNT = 1;
+        this.RETRIES = 3;
         this.client = client;
         this.state = {};
     }
@@ -40,7 +41,8 @@ class RedisConsumer {
         }
         const streamsMessages = await this.readStreams(streamsToListen);
         if (!streamsMessages) {
-            console.log('Something went wrong, no messages returned from client');
+            console.log('No messages returned from client');
+            this.listenForStreams();
             return;
         }
         for (const streamMessages of streamsMessages) {
@@ -71,7 +73,7 @@ class RedisConsumer {
         else {
             lastId = '0-0';
         }
-        this.state[name] = { lastId, executable, recovering: true };
+        this.state[name] = { lastId, executable, recovering: true, failed: [] };
     }
     async readStreams(streamsToListen) {
         const messages = await this.client.xReadGroup(this.client.groupName, this.client.clientName, streamsToListen, { BLOCK: this.BLOCK, COUNT: this.COUNT });
@@ -81,33 +83,44 @@ class RedisConsumer {
             return messages;
     }
     async processStreamMessages(streamMessages) {
-        try {
-            const stream = streamMessages.name;
-            const state = this.getStreamState(stream);
-            if (!state)
-                throw new Error('No state was found for stream processing of ' + stream);
-            const fnc = state.executable;
-            const messages = streamMessages.messages;
-            for (const message of messages) {
-                console.log('Executing processing function...');
+        const stream = streamMessages.name;
+        const state = this.getStreamState(stream);
+        if (!state)
+            throw new Error('No state was found for stream processing of ' + stream);
+        const fnc = state.executable;
+        const messages = streamMessages.messages;
+        for (const message of messages) {
+            console.log('Executing processing function...');
+            try {
                 await fnc(message);
             }
-            const recovering = state.recovering;
-            if (recovering && messages.length === 0) {
-                state.lastId = '>';
-                state.recovering = false;
+            catch (err) {
+                console.error(err);
+                const failed = state.failed.find(item => item.id === message.id);
+                if (!failed) {
+                    state.failed.push({ id: message.id, retried: 0 });
+                    return false;
+                }
+                else if (failed.retried >= this.RETRIES) {
+                    console.log('Retries FAILED! Continue process rest of the messages');
+                }
+                else {
+                    failed.retried++;
+                    return false;
+                }
             }
-            else if (recovering) {
-                const lastMessage = messages.slice(-1);
-                const lastId = lastMessage[0].id;
-                state.lastId = lastId;
-            }
-            return true;
         }
-        catch (err) {
-            console.error(err);
-            return false;
+        const recovering = state.recovering;
+        if (recovering && messages.length === 0) {
+            state.lastId = '>';
+            state.recovering = false;
         }
+        else if (recovering) {
+            const lastMessage = messages.slice(-1);
+            const lastId = lastMessage[0].id;
+            state.lastId = lastId;
+        }
+        return true;
     }
 }
 exports.RedisConsumer = RedisConsumer;

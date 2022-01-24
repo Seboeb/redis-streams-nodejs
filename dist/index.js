@@ -26,6 +26,7 @@ async function main() {
 main();
 function logData(data) {
     console.log('Knallen maar!', data);
+    throw new Error('test');
 }
 function logData2(message) {
     console.log('dit is function 2!', message);
