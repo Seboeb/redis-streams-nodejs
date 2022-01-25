@@ -4,15 +4,17 @@ import {
   StreamMessagesReply,
 } from '@node-redis/client/dist/lib/commands/generic-transformers';
 import { RedisClient } from './client';
+import { RetryProcessor } from './retry-processor';
 
 export type StreamMessage<T = { [key: string]: string }> = Omit<StreamMessageReply, 'message'> & {
   message: T;
 };
 
-type StreamProcessingFunction<T> = (data: StreamMessage<T>) => void;
+export type StreamProcessingFunction<T> = (data: StreamMessage<T>) => void;
 
 interface State {
-  lastId: string;
+  nextId: string;
+  lastSuccessId: string;
   executable: StreamProcessingFunction<any>;
   recovering: boolean;
   failed: FailedProcessing[];
@@ -33,7 +35,7 @@ interface XGroupReadInput {
 export interface StreamToListen {
   name: string;
   executable: StreamProcessingFunction<any>;
-  lastId?: string;
+  id?: string;
 }
 
 export type StreamsToListen = StreamToListen[];
@@ -41,6 +43,8 @@ export type StreamsToListen = StreamToListen[];
 export class RedisConsumer<S extends RedisScripts> {
   private client: RedisClient<S>;
   private state: RedisConsumerState;
+  private retryProcessor = new RetryProcessor();
+
   private BLOCK = 0;
   private COUNT = 1;
   private RETRIES = 3;
@@ -85,7 +89,7 @@ export class RedisConsumer<S extends RedisScripts> {
 
     const streamsToListen: XGroupReadInput[] = [];
     for (const stream in state) {
-      streamsToListen.push({ key: stream, id: state[stream].lastId });
+      streamsToListen.push({ key: stream, id: state[stream].nextId });
     }
 
     const streamsMessages = await this.readStreams(streamsToListen);
@@ -120,13 +124,15 @@ export class RedisConsumer<S extends RedisScripts> {
   private initStreamState(stream: StreamToListen): void {
     const name = stream.name;
     const executable = stream.executable;
-    let lastId: string;
-    if (stream.lastId) {
-      lastId = stream.lastId;
+    let lastSuccessId: string;
+    if (stream.id) {
+      lastSuccessId = stream.id;
     } else {
-      lastId = '0-0';
+      lastSuccessId = '0-0';
     }
-    this.state[name] = { lastId, executable, recovering: true, failed: [] };
+    let nextId = lastSuccessId;
+
+    this.state[name] = { nextId, lastSuccessId, executable, recovering: true, failed: [] };
   }
 
   private async readStreams(streamsToListen: XGroupReadInput[]) {
@@ -144,37 +150,31 @@ export class RedisConsumer<S extends RedisScripts> {
   private async processStreamMessages(streamMessages: { name: string; messages: StreamMessagesReply }) {
     const stream = streamMessages.name;
     const state = this.getStreamState(stream);
+
     if (!state) throw new Error('No state was found for stream processing of ' + stream);
 
     const fnc = state.executable;
     const messages = streamMessages.messages;
+
+    console.log('LAST SUCCESS ID', state.nextId);
+
     for (const message of messages) {
       console.log('Executing processing function...');
       try {
         await fnc(message);
       } catch (err) {
-        console.error(err);
-        const failed = state.failed.find(item => item.id === message.id);
-        if (!failed) {
-          state.failed.push({ id: message.id, retried: 0 });
-          return false;
-        } else if (failed.retried >= this.RETRIES) {
-          console.log('Retries FAILED! Continue process rest of the messages');
-        } else {
-          failed.retried++;
-          return false;
-        }
+        this.retryProcessor.add(message, fnc, this.RETRIES);
       }
     }
 
     const recovering = state.recovering;
     if (recovering && messages.length === 0) {
-      state.lastId = '>';
+      state.nextId = '>';
       state.recovering = false;
     } else if (recovering) {
       const lastMessage = messages.slice(-1);
       const lastId = lastMessage[0].id;
-      state.lastId = lastId;
+      state.nextId = lastId;
     }
     return true;
   }
