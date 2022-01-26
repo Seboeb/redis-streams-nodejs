@@ -1,53 +1,62 @@
-import { StreamProcessingFunction } from './consumer';
+import { StreamProcessingFunction, RedisConsumer } from './consumer';
 import { StreamMessageReply } from '@node-redis/client/dist/lib/commands/generic-transformers';
 import { timeout } from './helpers';
+import { RedisScripts } from 'redis';
 
 interface RetryState {
   retries: number;
-  maxRetry: number;
   message: StreamMessageReply;
+  stream: string;
   executable: StreamProcessingFunction<any>;
 }
 
-export class RetryProcessor {
+interface RetryProcessorOptions {
+  maxRetry: number;
+  retryTime?: string[];
+}
+
+export class RetryProcessor<S extends RedisScripts> {
+  private consumer: RedisConsumer<S>;
   private state: Map<string, RetryState> = new Map();
-  private timeoutMap = ['1s', '5s', '10s', '1m'];
 
-  constructor() {}
+  private retryTime: string[];
+  private maxRetry: number;
 
-  add(message: StreamMessageReply, executable: StreamProcessingFunction<any>, maxRetry: number) {
+  constructor(consumer: RedisConsumer<S>, options: RetryProcessorOptions) {
+    this.consumer = consumer;
+
+    this.retryTime = options.retryTime || ['15s', '1m', '15m'];
+    this.maxRetry = options.maxRetry;
+  }
+
+  add(stream: string, message: StreamMessageReply, executable: StreamProcessingFunction<any>) {
     const id = message.id;
 
     if (this.state.has(id)) return;
 
-    this.state.set(id, { retries: 0, maxRetry, message, executable });
-    console.log('New entry for retry processor: ' + id);
-
+    this.state.set(id, { retries: 0, message, stream, executable });
     this.retry(id);
   }
 
   private async retry(id: string) {
     const stateObj = this.state.get(id)!;
 
-    if (stateObj.retries >= stateObj.maxRetry) {
-      console.log('Removing retry from state');
+    if (stateObj.retries >= this.maxRetry) {
       this.state.delete(id);
-      console.log(this.state);
+      this.consumer.addAckMessage(stateObj.stream, id);
       return;
     }
 
     stateObj.retries++;
     const fnc = stateObj.executable;
     const message = stateObj.message;
+
+    const timeoutTime = this.calcTimeoutTime(stateObj);
+    await timeout(timeoutTime);
+
     try {
-      console.log('RETRYING...');
-
-      const timeoutTime = this.calcTimeoutTime(stateObj);
-
-      console.log('Waittime', timeoutTime);
-      await timeout(timeoutTime);
-
       await fnc(message);
+      this.consumer.addAckMessage(stateObj.stream, id);
       this.state.delete(id);
     } catch (err) {
       this.retry(id);
@@ -56,8 +65,10 @@ export class RetryProcessor {
   }
 
   private calcTimeoutTime(stateObj: RetryState) {
-    const index = stateObj.retries;
-    const timeString = this.timeoutMap[index - 1];
+    const retry = stateObj.retries;
+    const index = (retry > this.retryTime.length ? this.retryTime.length : retry) - 1;
+
+    const timeString = this.retryTime[index];
 
     let hours = +timeString.replace(/(\d+)h/, '$1');
     let minutes = +timeString.replace(/(\d+)m/, '$1');

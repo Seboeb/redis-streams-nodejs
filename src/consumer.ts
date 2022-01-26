@@ -12,17 +12,19 @@ export type StreamMessage<T = { [key: string]: string }> = Omit<StreamMessageRep
 
 export type StreamProcessingFunction<T> = (data: StreamMessage<T>) => void;
 
+export interface StreamToListen {
+  name: string;
+  executable: StreamProcessingFunction<any>;
+  id?: string;
+}
+
+export type StreamsToListen = StreamToListen[];
+
 interface State {
   nextId: string;
   lastSuccessId: string;
   executable: StreamProcessingFunction<any>;
   recovering: boolean;
-  failed: FailedProcessing[];
-}
-
-interface FailedProcessing {
-  id: string;
-  retried: number;
 }
 
 type RedisConsumerState = Record<string, State>;
@@ -32,26 +34,35 @@ interface XGroupReadInput {
   id: string;
 }
 
-export interface StreamToListen {
-  name: string;
-  executable: StreamProcessingFunction<any>;
-  id?: string;
+export interface ConsumerOptions {
+  COUNT?: number;
+  BLOCK?: number;
+  retries?: number;
+  retryTime?: string[];
 }
-
-export type StreamsToListen = StreamToListen[];
 
 export class RedisConsumer<S extends RedisScripts> {
   private client: RedisClient<S>;
   private state: RedisConsumerState;
-  private retryProcessor = new RetryProcessor();
+  private retryProcessor: RetryProcessor<S>;
+  private successfullMessages: Map<string, string[]> = new Map();
 
-  private BLOCK = 0;
-  private COUNT = 1;
-  private RETRIES = 3;
+  private BLOCK: number;
+  private COUNT: number;
+  private RETRIES: number;
 
-  constructor(client: RedisClient<S>) {
+  constructor(client: RedisClient<S>, options: ConsumerOptions = {}) {
     this.client = client;
     this.state = {};
+
+    this.COUNT = options.COUNT ?? 1;
+    this.BLOCK = options.BLOCK ?? 5000;
+    this.RETRIES = options.retries ?? 3;
+
+    this.retryProcessor = new RetryProcessor(this, {
+      retryTime: options.retryTime,
+      maxRetry: this.RETRIES,
+    });
   }
 
   set block(block: number) {
@@ -60,6 +71,10 @@ export class RedisConsumer<S extends RedisScripts> {
 
   set count(count: number) {
     this.COUNT = count;
+  }
+
+  set retries(retries: number) {
+    this.RETRIES = retries;
   }
 
   get settings() {
@@ -84,6 +99,15 @@ export class RedisConsumer<S extends RedisScripts> {
     this.listenForStreams();
   }
 
+  addAckMessage(stream: string, id: string) {
+    if (this.successfullMessages.has(stream)) {
+      const ackMessages = this.successfullMessages.get(stream)!;
+      ackMessages.push(id);
+    } else {
+      this.successfullMessages.set(stream, [id]);
+    }
+  }
+
   private async listenForStreams() {
     const state = this.state;
 
@@ -95,14 +119,13 @@ export class RedisConsumer<S extends RedisScripts> {
     const streamsMessages = await this.readStreams(streamsToListen);
     if (!streamsMessages) {
       console.log('No messages returned from client');
+      await this.acknowlegdeMessages();
       this.listenForStreams();
       return;
     }
 
     for (const streamMessages of streamsMessages) {
-      const result = await this.processStreamMessages(streamMessages);
-      console.log(result);
-      // ACKNOWLEDGEMENT
+      await this.processStreamMessages(streamMessages);
     }
 
     this.listenForStreams();
@@ -132,7 +155,7 @@ export class RedisConsumer<S extends RedisScripts> {
     }
     let nextId = lastSuccessId;
 
-    this.state[name] = { nextId, lastSuccessId, executable, recovering: true, failed: [] };
+    this.state[name] = { nextId, lastSuccessId, executable, recovering: true };
   }
 
   private async readStreams(streamsToListen: XGroupReadInput[]) {
@@ -156,16 +179,17 @@ export class RedisConsumer<S extends RedisScripts> {
     const fnc = state.executable;
     const messages = streamMessages.messages;
 
-    console.log('LAST SUCCESS ID', state.nextId);
-
     for (const message of messages) {
-      console.log('Executing processing function...');
       try {
         await fnc(message);
+        this.addAckMessage(stream, message.id);
       } catch (err) {
-        this.retryProcessor.add(message, fnc, this.RETRIES);
+        if (this.RETRIES === 0) continue;
+        this.retryProcessor.add(stream, message, fnc);
       }
     }
+
+    await this.acknowlegdeMessages();
 
     const recovering = state.recovering;
     if (recovering && messages.length === 0) {
@@ -177,5 +201,14 @@ export class RedisConsumer<S extends RedisScripts> {
       state.nextId = lastId;
     }
     return true;
+  }
+
+  private acknowlegdeMessages() {
+    this.successfullMessages.forEach((value, key) => {
+      const stream = key;
+      const ackMessages = value;
+
+      this.client.xAck(stream, this.client.groupName, ackMessages);
+    });
   }
 }
