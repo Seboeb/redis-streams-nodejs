@@ -42,7 +42,8 @@ export interface ConsumerOptions {
 }
 
 export class RedisConsumer<S extends RedisScripts> {
-  private client: RedisClient<S>;
+  public client: RedisClient<S>;
+
   private state: RedisConsumerState;
   private retryProcessor: RetryProcessor<S>;
   private successfullMessages: Map<string, string[]> = new Map();

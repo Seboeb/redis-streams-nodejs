@@ -4,11 +4,14 @@ import { timeout } from './helpers';
 import { RedisScripts } from 'redis';
 
 interface RetryState {
+  timestamps: number[];
   retries: number;
   message: StreamMessageReply;
   stream: string;
   executable: StreamProcessingFunction<any>;
 }
+
+export type RetryFailedMessage = Omit<RetryState, 'executable'>;
 
 interface RetryProcessorOptions {
   maxRetry: number;
@@ -34,32 +37,33 @@ export class RetryProcessor<S extends RedisScripts> {
 
     if (this.state.has(id)) return;
 
-    this.state.set(id, { retries: 0, message, stream, executable });
-    this.retry(id);
+    this.state.set(id, { timestamps: [], retries: 0, message, stream, executable });
+    this.processRetry(id);
   }
 
-  private async retry(id: string) {
+  private async processRetry(id: string) {
     const stateObj = this.state.get(id)!;
 
     if (stateObj.retries >= this.maxRetry) {
       this.state.delete(id);
-      this.consumer.addAckMessage(stateObj.stream, id);
+      this.emitRetryFail(stateObj);
       return;
     }
 
     stateObj.retries++;
-    const fnc = stateObj.executable;
-    const message = stateObj.message;
-
+    const timestamp = new Date().getTime();
+    stateObj.timestamps.push(timestamp);
     const timeoutTime = this.calcTimeoutTime(stateObj);
     await timeout(timeoutTime);
 
+    const fnc = stateObj.executable;
+    const message = stateObj.message;
     try {
       await fnc(message);
       this.consumer.addAckMessage(stateObj.stream, id);
       this.state.delete(id);
     } catch (err) {
-      this.retry(id);
+      this.processRetry(id);
     }
     return;
   }
@@ -80,5 +84,9 @@ export class RetryProcessor<S extends RedisScripts> {
 
     let timeoutTime = hours * 3600 * 1000 + minutes * 60 * 1000 + seconds * 1000;
     return timeoutTime;
+  }
+
+  private emitRetryFail({ stream, message, retries, timestamps }: RetryFailedMessage) {
+    this.consumer.client.emit('retry-failed', { stream, message, retries, timestamps });
   }
 }

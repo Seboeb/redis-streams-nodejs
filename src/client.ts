@@ -3,12 +3,18 @@ import { RedisScripts } from 'redis';
 import { RedisClientOptions } from 'redis';
 
 import { RedisConsumer, ConsumerOptions } from './consumer';
+import { RetryFailedMessage } from './retry-processor';
 
 const InstRedisClient = OriginalRedisClient.extend();
 
 interface AdditionalClientOptions {
   groupName: string;
   clientName: string;
+}
+
+export declare interface RedisClient<S extends RedisScripts> {
+  on(event: 'retry-failed', listener: (data: RetryFailedMessage) => void): this;
+  on(event: string, listener: (data: any) => void): this;
 }
 
 export class RedisClient<S extends RedisScripts> extends InstRedisClient {
