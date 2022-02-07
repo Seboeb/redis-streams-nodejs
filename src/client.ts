@@ -3,6 +3,7 @@ import { RedisScripts } from 'redis';
 import { RedisClientOptions } from 'redis';
 
 import { RedisConsumer, ConsumerOptions } from './consumer';
+import { RedisProducer } from './producer';
 import { RetryFailedMessage } from './retry-processor';
 
 const InstRedisClient = OriginalRedisClient.extend();
@@ -29,6 +30,10 @@ export class RedisClient<S extends RedisScripts> extends InstRedisClient {
 
   createConsumer<S extends RedisScripts>(options?: ConsumerOptions): RedisConsumer<S> {
     return new RedisConsumer<S>(this, options);
+  }
+
+  createProducer() {
+    return new RedisProducer(this);
   }
 
   async streamExists(name: string) {
