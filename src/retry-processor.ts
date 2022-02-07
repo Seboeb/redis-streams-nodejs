@@ -2,6 +2,7 @@ import { StreamProcessingFunction, RedisConsumer } from './consumer';
 import { StreamMessageReply } from '@node-redis/client/dist/lib/commands/generic-transformers';
 import { timeout } from './helpers';
 import { RedisScripts } from 'redis';
+import { EventEmitter } from 'stream';
 
 interface RetryState {
   timestamps: number[];
@@ -18,7 +19,7 @@ interface RetryProcessorOptions {
   retryTime?: string[];
 }
 
-export class RetryProcessor<S extends RedisScripts> {
+export class RetryProcessor<S extends RedisScripts> extends EventEmitter {
   private consumer: RedisConsumer<S>;
   private state: Map<string, RetryState> = new Map();
 
@@ -26,6 +27,7 @@ export class RetryProcessor<S extends RedisScripts> {
   private maxRetry: number;
 
   constructor(consumer: RedisConsumer<S>, options: RetryProcessorOptions) {
+    super();
     this.consumer = consumer;
 
     this.retryTime = options.retryTime || ['15s', '1m', '15m'];

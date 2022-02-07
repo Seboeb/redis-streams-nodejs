@@ -1,4 +1,4 @@
-import { RedisScripts } from 'redis';
+import { RedisClientType, RedisScripts } from 'redis';
 import {
   StreamMessageReply,
   StreamMessagesReply,
@@ -42,7 +42,9 @@ export interface ConsumerOptions {
 }
 
 export class RedisConsumer<S extends RedisScripts> {
-  public client: RedisClient<S>;
+  public client: RedisClientType<any, any>;
+
+  private originalClient: RedisClient<S>;
 
   private state: RedisConsumerState;
   private retryProcessor: RetryProcessor<S>;
@@ -53,17 +55,20 @@ export class RedisConsumer<S extends RedisScripts> {
   private RETRIES: number;
 
   constructor(client: RedisClient<S>, options: ConsumerOptions = {}) {
-    this.client = client;
+    this.originalClient = client;
+    this.client = client.duplicate();
     this.state = {};
 
     this.COUNT = options.COUNT ?? 1;
-    this.BLOCK = options.BLOCK ?? 5000;
+    this.BLOCK = options.BLOCK ?? 0;
     this.RETRIES = options.retries ?? 3;
 
     this.retryProcessor = new RetryProcessor(this, {
       retryTime: options.retryTime,
       maxRetry: this.RETRIES,
     });
+
+    this.client.connect();
   }
 
   set block(block: number) {
@@ -107,6 +112,8 @@ export class RedisConsumer<S extends RedisScripts> {
     } else {
       this.successfullMessages.set(stream, [id]);
     }
+
+    this.acknowlegdeMessages();
   }
 
   private async listenForStreams() {
@@ -161,8 +168,8 @@ export class RedisConsumer<S extends RedisScripts> {
 
   private async readStreams(streamsToListen: XGroupReadInput[]) {
     const messages = await this.client.xReadGroup(
-      this.client.groupName,
-      this.client.clientName,
+      this.originalClient.groupName,
+      this.originalClient.clientName,
       streamsToListen,
       { BLOCK: this.BLOCK, COUNT: this.COUNT }
     );
@@ -209,7 +216,7 @@ export class RedisConsumer<S extends RedisScripts> {
       const stream = key;
       const ackMessages = value;
 
-      this.client.xAck(stream, this.client.groupName, ackMessages);
+      this.originalClient.xAck(stream, this.originalClient.groupName, ackMessages);
     });
   }
 }
