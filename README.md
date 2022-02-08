@@ -33,7 +33,7 @@ import { RedisClient } from 'mypackage'
   // Redis stream to listen to and processable function
   const stream = {
     name: 'mystream',
-    excecutable: message => console.log('Redis message', message);
+    executable: message => console.log('Redis message', message);
   }
 
   // Listen for new messages and process them according the
@@ -74,12 +74,28 @@ const client = new RedisClient({
 
 For all available methods, please look in the official `node-redis` repository over [here](https://github.com/redis/node-redis/blob/master/README.md).
 
-**`createConsumer(options)`** creates a new Redis Streams consumer
+**`createConsumer(options)`**
 
 - `options` RedisConsumerOptions
-- Returns a RedisConsumer
+- Returns a <RedisConsumer>
 
-`createProducer()` creates a new Redis Streams consumer
+**`createProducer()`**
+
+- Returns a <RedisProducer>
+
+**`streamExists(key)`**
+
+- `key` key name of the stream
+- Returns a <boolean>
+
+**`groupExists(key)`** -`key` name of the stream
+
+- Returns a <boolean>
+
+**`createGroup(key)`**
+
+- `key` name of the stream
+- Returns a <string>
 
 #### RedisClientOptions
 
