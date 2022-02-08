@@ -33,22 +33,22 @@ export class RedisClient<S extends RedisScripts> extends InstRedisClient {
   }
 
   createProducer() {
-    return new RedisProducer(this);
+    return new RedisProducer<S>(this);
   }
 
-  async streamExists(name: string) {
-    return await this.exists(name);
+  async streamExists(key: string) {
+    return await this.exists(key);
   }
 
-  async groupExists(stream: string) {
-    if (!(await this.streamExists(stream))) return false;
+  async groupExists(key: string) {
+    if (!(await this.streamExists(key))) return false;
 
-    const groupInfo = await this.xInfoGroups(stream);
+    const groupInfo = await this.xInfoGroups(key);
     return groupInfo.length > 0;
   }
 
-  async createGroup(stream: string) {
-    const result = await this.xGroupCreate(stream, this.groupName, '$', { MKSTREAM: true });
+  async createGroup(key: string) {
+    const result = await this.xGroupCreate(key, this.groupName, '$', { MKSTREAM: true });
     return result;
   }
 }

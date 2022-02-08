@@ -77,25 +77,25 @@ For all available methods, please look in the official `node-redis` repository o
 **`createConsumer(options)`**
 
 - `options` RedisConsumerOptions
-- Returns a <RedisConsumer>
+- Returns a _RedisConsumer_
 
 **`createProducer()`**
 
-- Returns a <RedisProducer>
+- Returns a _RedisProducer_
 
 **`streamExists(key)`**
 
 - `key` key name of the stream
-- Returns a <boolean>
+- Returns a _boolean_
 
 **`groupExists(key)`** -`key` name of the stream
 
-- Returns a <boolean>
+- Returns a _boolean_
 
 **`createGroup(key)`**
 
 - `key` name of the stream
-- Returns a <string>
+- Returns a _string_
 
 #### RedisClientOptions
 
