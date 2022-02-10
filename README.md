@@ -30,7 +30,7 @@ npm install @secrid/redis-streams-nodejs
 ### Basic example
 
 ```typescript
-import { RedisClient } from 'mypackage'
+import { RedisClient } from 'redis-streams-nodejs'
 
 (async () => {
   // Client name must be unique per client
@@ -239,7 +239,7 @@ producer.add('mystream', message);
 This package has full Typescript support. See the example below on how to define a processing function with typed message data.
 
 ```typescript
-import { RedisClient, StreamsToListen, StreamMessageReply } from 'package';
+import { RedisClient, StreamsToListen, StreamMessageReply } from '@secrid/redis-streams-nodejs';
 
 const client = new RedisClient({
   groupName: 'mygroup',
