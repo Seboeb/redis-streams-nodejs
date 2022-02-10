@@ -1,0 +1,6 @@
+.vscode
+tsconfig.json
+
+node_modules/
+example/
+src/

@@ -1,8 +1,12 @@
 {
-  "name": "redis-streams-nodejs",
-  "version": "1.0.0",
-  "description": "Redis streams for NodeJs",
-  "main": "index.js",
+  "name": "@secrid/redis-streams-nodejs",
+  "version": "1.0.1",
+  "description": "Simple NodeJs consumer and producer for Redis Streams",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "build": "tsc"
   },
