@@ -33,7 +33,7 @@ import { RedisClient } from 'mypackage'
   // Redis stream to listen to and processable function
   const stream = {
     name: 'mystream',
-    executable: message => console.log('Redis message', message);
+    executable: (message) => console.log('Redis message for stream ' + stream, message);
   }
 
   // Listen for new messages and process them according the
@@ -70,33 +70,6 @@ const client = new RedisClient({
 });
 ```
 
-#### Methods
-
-For all available methods, please look in the official `node-redis` repository over [here](https://github.com/redis/node-redis/blob/master/README.md).
-
-**`createConsumer(options)`**
-
-- `options` RedisConsumerOptions
-- Returns a _RedisConsumer_
-
-**`createProducer()`**
-
-- Returns a _RedisProducer_
-
-**`streamExists(key)`**
-
-- `key` key name of the stream
-- Returns a _boolean_
-
-**`groupExists(key)`** -`key` name of the stream
-
-- Returns a _boolean_
-
-**`createGroup(key)`**
-
-- `key` name of the stream
-- Returns a _string_
-
 #### RedisClientOptions
 
 | Parameters | Description                                   | Required |
@@ -105,3 +78,109 @@ For all available methods, please look in the official `node-redis` repository o
 | clientName | Name of the client, must be unique per client | Yes      |
 
 Other options can be found in the official `node-redis` github repository over [here](https://github.com/redis/node-redis/blob/master/docs/client-configuration.md).
+
+#### Methods
+
+For all available methods, please look in the official `node-redis` repository over [here](https://github.com/redis/node-redis/blob/master/README.md).
+
+`createConsumer(options)`
+
+- `options` [RedisConsumerOptions](#redisconsumeroptions)
+- Returns a _RedisConsumer_
+
+`createProducer()`
+
+- Returns a _RedisProducer_
+
+`streamExists(key)`
+
+- `key` key name of the stream
+- Returns a _boolean_
+
+`groupExists(key)`
+
+- `key` name of the stream
+- Returns a _boolean_
+
+`createGroup(key)`
+
+- `key` name of the stream
+- Returns a _string_
+
+### Class RedisConsumer
+
+_Constructor_ : `client.createConsumer(options)`
+
+- `options` [RedisConsumerOptions](#redisconsumeroptions)
+
+The `RedisConsumer` is able to listen for incomming message in a stream. You can define an object or an array of objects in which you can define the name of the stream to listen for and which function should be executed for processing of the message. The consumer has a build-in retry mechanism which triggers an event `retry-failed` if all retries were unsuccessfull.
+
+When a message is successfully processed (also in retry state), the consumer will send an acknowledgement signal to the Redis server. When the acknowlegdement is performed, the message will be removed from the pending list for that consumer group.
+
+When the consumer starts, it will process all remaining pending messages at first before listening for new incomming messsage. However, you can overrule this behaviour by defining your own starting id.
+
+#### Example
+
+```typescript
+  const consumer = client.createConsumer({
+    COUNT: 3,
+    retries: 1,
+    retryTime: ['5s'],
+  });
+
+  const streams = [
+    {
+      name: 'mystream',
+      id: '>',
+      executable: (message) => console.log('Only listen to new messages', message);
+    },
+    {
+      name: 'myssecondstresm',
+      executable: (message, stream) => console.log('Message for stream ' + stream, message);
+    }
+  ]
+
+
+  consumer.client.on('retry-failed', ({stream, message}) => {
+    console.error('Failed processing message in stream ' + stream, message);
+  })
+
+  consumer.listen(streams);
+});
+```
+
+#### RedisConsumerOptions
+
+| Parameters | Description                                       | Required | Default              |
+| ---------- | ------------------------------------------------- | -------- | -------------------- |
+| COUNT      | Number of elements to read                        | No       | 1                    |
+| BLOCK      | Time in miliseconds to block while reading stream | No       | 0                    |
+| retries    | Amount of retries for processing messages         | No       | 3                    |
+| retryTime  | Time interval between each retry                  | No       | ['15s', '1m', '15m'] |
+
+More information about the `BLOCK` and `COUNT` parameters can be found at the official [docs](https://redis.io/documentation) of Redis.
+
+The `retryTime` is an array of time strings. Seconds, minutes and hours are supported ('s', 'm', 'h'). When there are less items in the `retryTime` array than the amount of retries, the last time string item is used.
+
+#### Methods
+
+`listen(streams)`
+
+- `streams` [StreamToListen](#streamtolisten-object) | Array([StreamToListen](#streamtolisten-object))
+
+`addAckMessage(stream, id)`
+
+- `stream` key name of the stream
+- `id` id of the message
+
+Adds the message to the acknowlegdement list.
+
+#### StreamToListen Object
+
+```Typescript
+{
+  name: 'mystream',                                        // Keyname of the Redis stream
+  executable: (message, stream) => console.log(message),   // Message processing function to be executed
+  id: '>'                                                  // Optional, start listining from the message id. Defaults to '0-0'
+}
+```
