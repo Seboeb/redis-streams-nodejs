@@ -61,7 +61,7 @@ export class RetryProcessor<S extends RedisScripts> extends EventEmitter {
     const fnc = stateObj.executable;
     const message = stateObj.message;
     try {
-      await fnc(message);
+      await fnc(message, stateObj.stream);
       this.consumer.addAckMessage(stateObj.stream, id);
       this.state.delete(id);
     } catch (err) {

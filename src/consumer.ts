@@ -1,16 +1,19 @@
 import { RedisClientType, RedisScripts } from 'redis';
 import {
-  StreamMessageReply,
+  StreamMessageReply as OriginalStreamMessageReply,
   StreamMessagesReply,
 } from '@node-redis/client/dist/lib/commands/generic-transformers';
 import { RedisClient } from './client';
 import { RetryProcessor } from './retry-processor';
 
-export type StreamMessage<T = { [key: string]: string }> = Omit<StreamMessageReply, 'message'> & {
+export type StreamMessageReply<T = { [key: string]: string }> = Omit<
+  OriginalStreamMessageReply,
+  'message'
+> & {
   message: T;
 };
 
-export type StreamProcessingFunction<T> = (data: StreamMessage<T>) => void;
+export type StreamProcessingFunction<T> = (data: StreamMessageReply<T>, stream: string) => void;
 
 export interface StreamToListen {
   name: string;
@@ -189,7 +192,7 @@ export class RedisConsumer<S extends RedisScripts> {
 
     for (const message of messages) {
       try {
-        await fnc(message);
+        await fnc(message, stream);
         this.addAckMessage(stream, message.id);
       } catch (err) {
         if (this.RETRIES === 0) continue;
