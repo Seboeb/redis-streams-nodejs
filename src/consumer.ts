@@ -129,7 +129,6 @@ export class RedisConsumer<S extends RedisScripts> {
 
     const streamsMessages = await this.readStreams(streamsToListen);
     if (!streamsMessages) {
-      console.log('No messages returned from client');
       await this.acknowlegdeMessages();
       this.listenForStreams();
       return;
