@@ -33,7 +33,7 @@ import { RedisClient } from 'mypackage'
   // Redis stream to listen to and processable function
   const stream = {
     name: 'mystream',
-    executable: (message) => console.log('Redis message for stream ' + stream, message);
+    executable: (data, stream) => console.log('Redis message for stream ' + stream, data);
   }
 
   // Listen for new messages and process them according the
@@ -132,17 +132,18 @@ When the consumer starts, it will process all remaining pending messages at firs
     {
       name: 'mystream',
       id: '>',
-      executable: (message) => console.log('Only listen to new messages', message);
+      executable: (data) => console.log('Only listen to new messages', data.message);
     },
     {
       name: 'myssecondstresm',
-      executable: (message, stream) => console.log('Message for stream ' + stream, message);
+      executable: (data, stream) => console.log('Message for stream ' + stream, data.message);
     }
   ]
 
 
-  consumer.client.on('retry-failed', ({stream, message}) => {
-    console.error('Failed processing message in stream ' + stream, message);
+  consumer.client.on('retry-failed', ({ stream, message, timestamps, retries }) => {
+    console.error('Failed processing message in stream ' + stream + '. Amount of retries: ' + retries, message);
+    console.log(timestamps);
   })
 
   consumer.listen(streams);
@@ -162,6 +163,8 @@ More information about the `BLOCK` and `COUNT` parameters can be found at the of
 
 The `retryTime` is an array of time strings. Seconds, minutes and hours are supported ('s', 'm', 'h'). When there are less items in the `retryTime` array than the amount of retries, the last time string item is used.
 
+If you want to disable the retry mechanism, select a value of 0 for `retries`.
+
 #### Methods
 
 `listen(streams)`
@@ -177,10 +180,78 @@ Adds the message to the acknowlegdement list.
 
 #### StreamToListen Object
 
-```Typescript
+```typescript
 {
   name: 'mystream',                                        // Keyname of the Redis stream
   executable: (message, stream) => console.log(message),   // Message processing function to be executed
   id: '>'                                                  // Optional, start listining from the message id. Defaults to '0-0'
+}
+```
+
+### Class RedisProducer
+
+_Constructor_ : `client.createProducer()`
+
+The `RedisProducer` is used to add new messages to the Redis stream.
+
+#### Example
+
+```typescript
+const message = {
+  firstName: 'John',
+  lastName: 'Doe',
+};
+
+const producer = client.createProducer();
+producer.add('mystream', message);
+```
+
+#### Methods
+
+`add(stream, message)`
+
+- `stream` key name of the stream
+- `message` object/message to add to the stream
+
+### Events
+
+| Event name   | Description                                                                                                                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| retry-failed | Event is triggered on the `RedisConsumer` when retry of the message has failed/ended. A data object with properties `stream`, `message`, `retries` and `timestamps` is forwarded to the event. |
+
+## Typescript
+
+This package has full Typescript support. See the example below on how to define a processing function with typed message data.
+
+```typescript
+import { RedisClient, StreamsToListen, StreamMessageReply } from 'package';
+
+const client = new RedisClient({
+  groupName: 'mygroup',
+  clientName: 'myclient1',
+});
+await client.connect();
+
+const streams: StreamsToListen = [
+  {
+    name: 'mystream',
+    executable: processing,
+  },
+];
+
+const consumer = client.createConsumer();
+consumer.listen(streams);
+
+// Define interface of your message data
+interface MyMessage {
+  firstName: string;
+  lastName: string;
+}
+
+function processing(data: StreamMessageReply<MyMessage>) {
+  const message = data.message;
+  const fullName = message.firstName + ' ' + message.lastName; // Full typeing of message
+
+  console.log('Hello, my name is ' + fullName);
 }
 ```
