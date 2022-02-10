@@ -2,6 +2,21 @@
 
 Simple node package for easy use of Redis Streams functionality. This package allows for creation of a Redis consumer and producer.
 
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Basic Example](#basic-example)
+  - [Class RedisClient](#class-redisclient)
+    - [RedisClientOptions](#redisclientoptions)
+    - [Methods](#methods)
+  - [Class RedisConsumer](#class-redisconsumer)
+    - [RedisConsumerOptions](#redisconsumeroptions)
+    - [Methods](#methods-1)
+    - [StreamToListen Object](#streamtolisten-object)
+  - [Class RedisProducer](#class-redisproducer)
+    - [Methods](#methods-2)
+  - [Events](#events)
+- [Typescript](#typescript)
+
 ## Installation
 
 Make sure you have NodeJs installed, then:
