@@ -1,5 +1,6 @@
 import { StreamProcessingFunction, RedisConsumer } from './consumer';
 import { StreamMessageReply } from '@node-redis/client/dist/lib/commands/generic-transformers';
+import { RedisCommandArgument } from '@node-redis/client/dist/lib/commands';
 import { timeout } from './helpers';
 import { RedisScripts } from 'redis';
 import { EventEmitter } from 'stream';
@@ -21,7 +22,7 @@ interface RetryProcessorOptions {
 
 export class RetryProcessor<S extends RedisScripts> extends EventEmitter {
   private consumer: RedisConsumer<S>;
-  private state: Map<string, RetryState> = new Map();
+  private state: Map<RedisCommandArgument, RetryState> = new Map();
 
   private retryTime: string[];
   private maxRetry: number;
@@ -43,7 +44,7 @@ export class RetryProcessor<S extends RedisScripts> extends EventEmitter {
     this.processRetry(id);
   }
 
-  private async processRetry(id: string) {
+  private async processRetry(id: RedisCommandArgument) {
     const stateObj = this.state.get(id)!;
 
     if (stateObj.retries >= this.maxRetry) {
