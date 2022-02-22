@@ -1,7 +1,6 @@
 import { RedisScripts } from 'redis';
+import { StreamMessageData, StreamMessageId } from '.';
 import { RedisClient } from './client';
-
-import { TuplesObject } from '@node-redis/client/dist/lib/commands/generic-transformers';
 
 export class RedisProducer<S extends RedisScripts> {
   private client: RedisClient<S>;
@@ -10,7 +9,7 @@ export class RedisProducer<S extends RedisScripts> {
     this.client = client;
   }
 
-  add(stream: string, message: TuplesObject) {
+  add(stream: StreamMessageId, message: StreamMessageData) {
     this.client.xAdd(stream, '*', message);
   }
 }

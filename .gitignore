@@ -1,3 +1,4 @@
 node_modules
 .vscode
 dist
+example/private-test.ts

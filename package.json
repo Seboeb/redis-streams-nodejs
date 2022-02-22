@@ -1,6 +1,6 @@
 {
   "name": "@secrid/redis-streams-nodejs",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Simple NodeJs consumer and producer for Redis Streams",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/Secrid/redis-streams-nodejs#readme",
   "dependencies": {
-    "redis": "^4.0.1"
+    "redis": "^4.0.4"
   },
   "devDependencies": {
     "@types/node": "^17.0.8"

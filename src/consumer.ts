@@ -3,13 +3,12 @@ import {
   StreamMessageReply as OriginalStreamMessageReply,
   StreamMessagesReply,
 } from '@node-redis/client/dist/lib/commands/generic-transformers';
+
+import { StreamMessageData, StreamMessageId } from '.';
 import { RedisClient } from './client';
 import { RetryProcessor } from './retry-processor';
 
-export type StreamMessageReply<T = { [key: string]: string }> = Omit<
-  OriginalStreamMessageReply,
-  'message'
-> & {
+export type StreamMessageReply<T = StreamMessageData> = Omit<OriginalStreamMessageReply, 'message'> & {
   message: T;
 };
 
@@ -24,7 +23,7 @@ export interface StreamToListen {
 export type StreamsToListen = StreamToListen[];
 
 interface State {
-  nextId: string;
+  nextId: StreamMessageId;
   lastSuccessId: string;
   executable: StreamProcessingFunction<any>;
   recovering: boolean;
@@ -34,7 +33,7 @@ type RedisConsumerState = Record<string, State>;
 
 interface XGroupReadInput {
   key: string;
-  id: string;
+  id: StreamMessageId;
 }
 
 export interface ConsumerOptions {
@@ -51,7 +50,7 @@ export class RedisConsumer<S extends RedisScripts> {
 
   private state: RedisConsumerState;
   private retryProcessor: RetryProcessor<S>;
-  private successfullMessages: Map<string, string[]> = new Map();
+  private successfullMessages: Map<string, StreamMessageId[]> = new Map();
 
   private BLOCK: number;
   private COUNT: number;
@@ -96,9 +95,9 @@ export class RedisConsumer<S extends RedisScripts> {
     }
 
     for (const stream of streams) {
-      const groupExists = await this.client.groupExists(stream.name);
+      const groupExists = await this.originalClient.groupExists(stream.name);
       if (!groupExists) {
-        await this.client.createGroup(stream.name);
+        await this.originalClient.createGroup(stream.name);
       }
 
       if (this.hasStreamState(stream.name)) continue;
@@ -108,7 +107,7 @@ export class RedisConsumer<S extends RedisScripts> {
     this.listenForStreams();
   }
 
-  addAckMessage(stream: string, id: string) {
+  addAckMessage(stream: string, id: StreamMessageId) {
     if (this.successfullMessages.has(stream)) {
       const ackMessages = this.successfullMessages.get(stream)!;
       ackMessages.push(id);
