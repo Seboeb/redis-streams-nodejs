@@ -1,6 +1,6 @@
 {
   "name": "@secrid/redis-streams-nodejs",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Simple NodeJs consumer and producer for Redis Streams",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

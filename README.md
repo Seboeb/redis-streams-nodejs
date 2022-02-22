@@ -30,7 +30,7 @@ npm install @secrid/redis-streams-nodejs
 ### Basic example
 
 ```typescript
-import { RedisClient } from 'redis-streams-nodejs'
+import { RedisClient } from '@secrid/redis-streams-nodejs'
 
 (async () => {
   // Client name must be unique per client
