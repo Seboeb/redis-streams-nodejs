@@ -265,7 +265,7 @@ interface MyMessage {
 
 function processing(data: StreamMessageReply<MyMessage>) {
   const message = data.message;
-  const fullName = message.firstName + ' ' + message.lastName; // Full typeing of message
+  const fullName = message.firstName + ' ' + message.lastName; // Full typing of message
 
   console.log('Hello, my name is ' + fullName);
 }
