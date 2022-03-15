@@ -30,16 +30,16 @@ npm install @secrid/redis-streams-nodejs
 ### Basic example
 
 ```typescript
-import { RedisClient } from '@secrid/redis-streams-nodejs'
+import { RedisClient } from '@secrid/redis-streams-nodejs';
 
 (async () => {
   // Client name must be unique per client
   const client = new RedisClient({
     groupName: 'mygroup',
-    clientName: 'myclient1'
+    clientName: 'myclient1',
   });
 
-  client.on('error', (err) => console.log('Redis Client Error', err));
+  client.on('error', err => console.log('Redis Client Error', err));
 
   await client.connect();
 
@@ -48,13 +48,13 @@ import { RedisClient } from '@secrid/redis-streams-nodejs'
   // Redis stream to listen to and processable function
   const stream = {
     name: 'mystream',
-    executable: (data, stream) => console.log('Redis message for stream ' + stream, data);
-  }
+    executable: (data, stream) => console.log('Redis message for stream ' + stream, data),
+  };
 
   // Listen for new messages and process them according the
   // defined executable function
   consumer.listen(stream);
-})()
+})();
 ```
 
 When creating the Redis client, make sure to define a group and client name. Note, the client name must be
@@ -147,11 +147,11 @@ When the consumer starts, it will process all remaining pending messages at firs
     {
       name: 'mystream',
       id: '>',
-      executable: (data) => console.log('Only listen to new messages', data.message);
+      executable: (data) => console.log('Only listen to new messages', data.message)
     },
     {
       name: 'myssecondstresm',
-      executable: (data, stream) => console.log('Message for stream ' + stream, data.message);
+      executable: (data, stream) => console.log('Message for stream ' + stream, data.message)
     }
   ]
 
