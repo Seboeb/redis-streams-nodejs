@@ -20,7 +20,7 @@ interface RetryProcessorOptions {
   retryTime?: string[];
 }
 
-export class RetryProcessor<S extends RedisScripts> extends EventEmitter {
+export class RetryProcessor<S extends RedisScripts = RedisScripts> extends EventEmitter {
   private consumer: RedisConsumer<S>;
   private state: Map<RedisCommandArgument, RetryState> = new Map();
 
