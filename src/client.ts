@@ -13,7 +13,7 @@ interface AdditionalClientOptions {
   clientName: string;
 }
 
-export declare interface RedisClient<S extends RedisScripts> {
+export declare interface RedisClient<S extends RedisScripts = RedisScripts> {
   on(event: 'retry-failed', listener: (data: RetryFailedMessage) => void): this;
   on(event: string, listener: (data: any) => void): this;
 }

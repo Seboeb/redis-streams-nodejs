@@ -2,7 +2,7 @@ import { RedisScripts } from 'redis';
 import { StreamMessageData, StreamMessageId } from '.';
 import { RedisClient } from './client';
 
-export class RedisProducer<S extends RedisScripts> {
+export class RedisProducer<S extends RedisScripts = RedisScripts> {
   private client: RedisClient<S>;
 
   constructor(client: RedisClient<S>) {

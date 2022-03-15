@@ -43,7 +43,7 @@ export interface ConsumerOptions {
   retryTime?: string[];
 }
 
-export class RedisConsumer<S extends RedisScripts> {
+export class RedisConsumer<S extends RedisScripts = RedisScripts> {
   public client: RedisClientType<any, any>;
 
   private originalClient: RedisClient<S>;
