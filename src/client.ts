@@ -2,7 +2,7 @@ import OriginalRedisClient from '@node-redis/client/dist/lib/client';
 import { RedisScripts } from 'redis';
 import { RedisClientOptions } from 'redis';
 
-import { RedisConsumer, ConsumerOptions } from './consumer';
+import { RedisConsumer, ConsumerOptions, ProcessErrorData } from './consumer';
 import { RedisProducer } from './producer';
 import { RetryFailedMessage } from './retry-processor';
 
@@ -15,6 +15,7 @@ interface AdditionalClientOptions {
 
 export declare interface RedisClient<S extends RedisScripts = RedisScripts> {
   on(event: 'retry-failed', listener: (data: RetryFailedMessage) => void): this;
+  on(event: 'process-error', listener: (err: Error, data: ProcessErrorData) => void): this;
   on(event: string, listener: (data: any) => void): this;
 }
 
