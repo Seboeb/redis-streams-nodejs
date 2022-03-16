@@ -153,13 +153,16 @@ When the consumer starts, it will process all remaining pending messages at firs
       name: 'myssecondstresm',
       executable: (data, stream) => console.log('Message for stream ' + stream, data.message)
     }
-  ]
-
+  ];
 
   consumer.client.on('retry-failed', ({ stream, message, timestamps, retries }) => {
     console.error('Failed processing message in stream ' + stream + '. Amount of retries: ' + retries, message);
     console.log(timestamps);
-  })
+  });
+
+  consumer.client.on('process-error', (err, { stream, message }) => {
+    console.error('An unexpected error occured for stream ' + stream, err.message);
+  });
 
   consumer.listen(streams);
 });
@@ -230,9 +233,10 @@ producer.add('mystream', message);
 
 ### Events
 
-| Event name   | Description                                                                                                                                                                                    |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| retry-failed | Event is triggered on the `RedisConsumer` when retry of the message has failed/ended. A data object with properties `stream`, `message`, `retries` and `timestamps` is forwarded to the event. |
+| Event name    | Description                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| process-error | Event is triggered on the `RedisConsumer` when an error occurs during execution of the streams processing function. First argument is the error object, second argument is an object containing the stream name and message. |
+| retry-failed  | Event is triggered on the `RedisConsumer` when retry of the message has failed/ended. A data object with properties `stream`, `message`, `retries` and `timestamps` is forwarded to the event.                               |
 
 ## Typescript
 
