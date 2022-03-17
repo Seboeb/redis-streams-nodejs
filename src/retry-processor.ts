@@ -6,6 +6,7 @@ import { RedisScripts } from 'redis';
 import { EventEmitter } from 'stream';
 
 interface RetryState {
+  lastError: Error;
   timestamps: number[];
   retries: number;
   message: StreamMessageReply;
@@ -13,7 +14,8 @@ interface RetryState {
   executable: StreamProcessingFunction<any>;
 }
 
-export type RetryFailedMessage = Omit<RetryState, 'executable'>;
+export type RetryFailedMessage = Omit<RetryState, 'executable' | 'lastError'>;
+export type RetryMessage = Omit<RetryFailedMessage, 'timestamps' | 'lastError'> & { timestamp: number };
 
 interface RetryProcessorOptions {
   maxRetry: number;
@@ -35,12 +37,12 @@ export class RetryProcessor<S extends RedisScripts = RedisScripts> extends Event
     this.maxRetry = options.maxRetry;
   }
 
-  add(stream: string, message: StreamMessageReply, executable: StreamProcessingFunction<any>) {
+  add(error: Error, stream: string, message: StreamMessageReply, executable: StreamProcessingFunction<any>) {
     const id = message.id;
 
     if (this.state.has(id)) return;
 
-    this.state.set(id, { timestamps: [], retries: 0, message, stream, executable });
+    this.state.set(id, { lastError: error, timestamps: [], retries: 0, message, stream, executable });
     this.processRetry(id);
   }
 
@@ -62,10 +64,19 @@ export class RetryProcessor<S extends RedisScripts = RedisScripts> extends Event
     const fnc = stateObj.executable;
     const message = stateObj.message;
     try {
+      this.emitRetry(stateObj);
       await fnc(message, stateObj.stream);
       this.consumer.addAckMessage(stateObj.stream, id);
       this.state.delete(id);
     } catch (err) {
+      if (err instanceof Error) {
+        stateObj.lastError = err;
+      } else {
+        const newErr = new Error(String(err));
+        stateObj.lastError = newErr;
+      }
+
+      this.emitProcessFailed(stateObj);
       this.processRetry(id);
     }
     return;
@@ -89,7 +100,16 @@ export class RetryProcessor<S extends RedisScripts = RedisScripts> extends Event
     return timeoutTime;
   }
 
-  private emitRetryFail({ stream, message, retries, timestamps }: RetryFailedMessage) {
-    this.consumer.client.emit('retry-failed', { stream, message, retries, timestamps });
+  private emitRetryFail({ lastError, stream, message, retries, timestamps }: RetryState) {
+    this.consumer.client.emit('retry-failed', lastError, { stream, message, retries, timestamps });
+  }
+
+  private emitRetry({ stream, message, retries, timestamps }: RetryState) {
+    const timestamp = timestamps[timestamps.length - 1];
+    this.consumer.client.emit('retry', { stream, message, retries, timestamp });
+  }
+
+  private emitProcessFailed({ lastError, stream, message, retries }: RetryState) {
+    this.consumer.client.emit('process-error', lastError, { stream, message, retries });
   }
 }

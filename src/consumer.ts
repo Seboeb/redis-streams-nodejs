@@ -46,6 +46,7 @@ export interface ConsumerOptions {
 export interface ProcessErrorData {
   stream: string;
   message: OriginalStreamMessageReply;
+  retries: number;
 }
 
 export class RedisConsumer<S extends RedisScripts = RedisScripts> {
@@ -198,9 +199,16 @@ export class RedisConsumer<S extends RedisScripts = RedisScripts> {
         await fnc(message, stream);
         this.addAckMessage(stream, message.id);
       } catch (err) {
-        this.client.emit('process-error', err, { stream, message });
+        this.client.emit('process-error', err, { stream, message, retries: 0 });
+
         if (this.RETRIES === 0) continue;
-        this.retryProcessor.add(stream, message, fnc);
+
+        if (err instanceof Error) {
+          this.retryProcessor.add(err, stream, message, fnc);
+        } else {
+          const newErr = new Error(String(err));
+          this.retryProcessor.add(newErr, stream, message, fnc);
+        }
       }
     }
 
