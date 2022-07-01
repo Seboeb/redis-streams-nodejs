@@ -1,4 +1,4 @@
-import { StreamMessageReply } from '@node-redis/client/dist/lib/commands/generic-transformers';
+import { StreamMessageReply } from '@redis/client/dist/lib/commands/generic-transformers';
 
 import { PropType } from './helpers';
 

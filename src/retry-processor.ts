@@ -1,6 +1,6 @@
 import { StreamProcessingFunction, RedisConsumer } from './consumer';
-import { StreamMessageReply } from '@node-redis/client/dist/lib/commands/generic-transformers';
-import { RedisCommandArgument } from '@node-redis/client/dist/lib/commands';
+import { StreamMessageReply } from '@redis/client/dist/lib/commands/generic-transformers';
+import { RedisCommandArgument } from '@redis/client/dist/lib/commands';
 import { timeout } from './helpers';
 import { RedisScripts } from 'redis';
 import { EventEmitter } from 'stream';

@@ -1,4 +1,4 @@
-import OriginalRedisClient from '@node-redis/client/dist/lib/client';
+import OriginalRedisClient from '@redis/client/dist/lib/client';
 import { RedisScripts } from 'redis';
 import { RedisClientOptions } from 'redis';
 
@@ -24,7 +24,7 @@ export class RedisClient<S extends RedisScripts> extends InstRedisClient {
   public readonly groupName: string;
   public readonly clientName: string;
 
-  constructor(options: Omit<RedisClientOptions<never, S>, 'modules'> & AdditionalClientOptions) {
+  constructor(options: Omit<RedisClientOptions<never, never, S>, 'modules'> & AdditionalClientOptions) {
     super(options);
     this.groupName = options.groupName;
     this.clientName = options.clientName;
