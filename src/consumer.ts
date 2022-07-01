@@ -2,7 +2,7 @@ import { RedisClientType, RedisScripts } from 'redis';
 import {
   StreamMessageReply as OriginalStreamMessageReply,
   StreamMessagesReply,
-} from '@node-redis/client/dist/lib/commands/generic-transformers';
+} from '@redis/client/dist/lib/commands/generic-transformers';
 
 import { StreamMessageData, StreamMessageId } from '.';
 import { RedisClient } from './client';
@@ -50,7 +50,7 @@ export interface ProcessErrorData {
 }
 
 export class RedisConsumer<S extends RedisScripts = RedisScripts> {
-  public client: RedisClientType<any, any>;
+  public client: RedisClientType<any, any, any>;
 
   private originalClient: RedisClient<S>;
 
