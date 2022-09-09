@@ -15,6 +15,18 @@
     "url": "git+https://github.com/Seboeb/redis-streams-nodejs.git"
   },
   "author": "Sebastiaan Hekner",
+  "keywords": [
+    "redis",
+    "streams",
+    "consumer",
+    "producer",
+    "messaging",
+    "pub/sub",
+    "queue",
+    "broker",
+    "typescript",
+    "nodejs"
+  ],
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Seboeb/redis-streams-nodejs/issues"
