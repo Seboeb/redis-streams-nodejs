@@ -1,6 +1,6 @@
 {
   "name": "redis-streams-nodejs",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Simple NodeJs consumer and producer for Redis Streams",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
