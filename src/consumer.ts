@@ -231,8 +231,9 @@ export class RedisConsumer<S extends RedisScripts = RedisScripts> {
       const stream = key;
       const ackMessages = value;
 
-      this.originalClient.xAck(stream, this.originalClient.groupName, ackMessages);
-      this.originalClient.xDel(stream, ackMessages);
+      this.originalClient.xAck(stream, this.originalClient.groupName, ackMessages).then((x: number) => {
+        if(x) this.originalClient.xDel(stream, ackMessages);
+      });
     });
   }
 }
