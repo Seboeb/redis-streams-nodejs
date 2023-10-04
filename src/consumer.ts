@@ -121,7 +121,7 @@ export class RedisConsumer<S extends RedisScripts = RedisScripts> {
       this.successfullMessages.set(stream, [id]);
     }
 
-    this.acknowlegdeMessages();
+    // this.acknowlegdeMessages();
   }
 
   private async listenForStreams() {
@@ -226,14 +226,15 @@ export class RedisConsumer<S extends RedisScripts = RedisScripts> {
     return true;
   }
 
-  private acknowlegdeMessages() {
-    this.successfullMessages.forEach((value, key) => {
-      const stream = key;
-      const ackMessages = value;
-
-      this.originalClient.xAck(stream, this.originalClient.groupName, ackMessages).then((x: number) => {
-        if(x) this.originalClient.xDel(stream, ackMessages);
-      });
-    });
+  private async acknowlegdeMessages() {
+    for (const item of this.successfullMessages) {
+      const stream = item[0];
+      const ackMessages = item[1];;
+      const id = await this.originalClient.xAck(stream, this.originalClient.groupName, ackMessages);
+      if (id){
+        this.successfullMessages.delete(stream);
+        this.originalClient.xDel(stream, ackMessages);
+      }
+    }
   }
 }
