@@ -1,6 +1,6 @@
 {
-  "name": "redis-streams-nodejs",
-  "version": "1.1.5",
+  "name": "redis-consumer",
+  "version": "1.1.0",
   "description": "Simple NodeJs consumer and producer for Redis Streams",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/Seboeb/redis-streams-nodejs#readme",
   "dependencies": {
-    "redis": "^4.0.4"
+    "redis": "^4.6.10"
   },
   "devDependencies": {
     "@types/node": "^18.0.0"
